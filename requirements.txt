@@ -1,0 +1,63 @@
+# 数据库迁移工具
+alembic==1.14.1
+# Pydantic 类型注解依赖
+annotated-types==0.7.0
+# FastAPI 异步 I/O 依赖
+anyio==4.12.1
+# Passlib 密码哈希依赖
+bcrypt==5.0.0
+# 命令行工具构建（Alembic 依赖）
+click==8.3.1
+# 终端颜色输出
+colorama==0.4.6
+# Web 框架核心
+fastapi==0.135.0
+# HTTP/1.1 协议层（Uvicorn 依赖）
+h11==0.16.0
+# 国际化域名处理
+idna==3.11
+# Alembic 模板引擎
+Mako==1.3.10
+# Mako 依赖
+MarkupSafe==3.0.3
+# 密码哈希库
+passlib==1.7.4
+# Pydantic 数据验证/设置管理
+pydantic==2.12.5
+# Pydantic v2 核心运行时
+pydantic_core==2.41.5
+# MySQL 数据库驱动
+PyMySQL==1.1.1
+# 从 .env 文件加载环境变量
+python-dotenv==1.0.1
+# SQLAlchemy ORM 库
+SQLAlchemy==2.0.38
+# FastAPI 底层 Web 框架
+starlette==0.52.1
+# Python 类型提示扩展
+typing_extensions==4.15.0
+# JWT 编解码
+PyJWT==2.9.0
+# ASGI 服务器（运行 FastAPI）
+uvicorn==0.41.0
+# Python 日志库
+loguru==0.7.2
+# 冒烟测试 HTTP 客户端
+httpx==0.28.1
+# 冒烟测试框架
+pytest==8.4.2
+# pytest 异步测试支持
+pytest-asyncio==1.2.0
+# FastAPI 文件上传依赖
+python-multipart==0.0.9
+# MinIO 对象存储 SDK
+minio==7.2.18
+# langchain-openai 0.3.x 要求 langchain-core>=0.3.65；三者需互相兼容。
+langchain-core==0.3.84
+langchain-openai==0.3.23
+langchain-community==0.3.23
+# DuckDuckGo：langchain_community.tools.DuckDuckGoSearchRun 依赖
+duckduckgo-search==7.5.5
+
+# Redis 客户端
+redis==5.0.0
