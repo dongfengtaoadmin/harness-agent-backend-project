@@ -26,8 +26,8 @@ passlib==1.7.4
 pydantic==2.12.5
 # Pydantic v2 核心运行时
 pydantic_core==2.41.5
-# MySQL 数据库驱动
-PyMySQL==1.1.1
+# MySQL 数据库驱动（rsa extra 支持 MySQL 8 的 caching_sha2_password 认证）
+PyMySQL[rsa]==1.1.1
 # 从 .env 文件加载环境变量
 python-dotenv==1.0.1
 # SQLAlchemy ORM 库
@@ -52,6 +52,8 @@ pytest-asyncio==1.2.0
 python-multipart==0.0.9
 # MinIO 对象存储 SDK
 minio==7.2.18
+# 腾讯云 GLM-5 Anthropic 兼容接口客户端
+anthropic==0.121.0
 # langchain-openai 0.3.x 要求 langchain-core>=0.3.65；三者需互相兼容。
 langchain-core==0.3.84
 langchain-openai==0.3.23

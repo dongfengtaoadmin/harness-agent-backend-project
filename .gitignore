@@ -8,5 +8,4 @@ __pycache__/
 .env.testing
 logs/
 *.log
-alembic
      

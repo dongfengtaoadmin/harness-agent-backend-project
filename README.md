@@ -8,9 +8,7 @@
 
 - macOS
 - Python 3.12（项目当前使用 3.12.13）
-- MySQL
-- Redis
-- MinIO
+- Docker Desktop（用于运行 MySQL、Redis 和 MinIO）
 - pyenv（推荐，用于管理 Python 版本）
 
 ## macOS 快速启动
@@ -77,16 +75,16 @@ python -m pip install -r requirements.txt
 
 项目按照运行环境读取配置文件：
 
-- 开发环境：`.env.development`
+- 开发环境：`.env`
 - 生产环境：`.env.production`
 
 macOS 可先复制示例配置：
 
 ```bash
-cp env.example .env.development
+cp env.example .env
 ```
 
-然后编辑 `.env.development`，至少检查以下配置：
+然后编辑 `.env`，至少检查以下配置：
 
 ```dotenv
 APP_ENV=development
@@ -108,8 +106,12 @@ DEEPSEEK_API_KEY=请填写你的_API_Key
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-chat
 
+ANTHROPIC_AUTH_TOKEN=请填写你的_Auth_Token
+ANTHROPIC_BASE_URL=https://api.lkeap.cloud.tencent.com/coding/anthropic
+ANTHROPIC_MODEL=glm-5
+
 REDIS_HOST=127.0.0.1
-REDIS_PORT=6379
+REDIS_PORT=6380
 REDIS_DB=0
 REDIS_PASSWORD=
 ```
@@ -122,9 +124,25 @@ export APP_ENV=development
 
 如果没有设置 `APP_ENV`，项目默认使用 `development`。操作系统环境变量会覆盖 `.env.development` 中的同名配置。
 
-### 6. 启动服务
+### 6. 启动中间件
 
-确保 MySQL、Redis 和 MinIO 已启动，然后执行：
+项目通过 `compose.yaml` 管理 MySQL、Redis 和 MinIO。启动后，它们会在 Docker Desktop 中统一显示在 `harness` 分组下：
+
+```bash
+docker compose up -d
+```
+
+查看运行状态：
+
+```bash
+docker compose ps
+```
+
+MinIO 控制台地址为 http://127.0.0.1:9001，默认用户名和密码均为 `minioadmin`。
+
+### 7. 启动服务
+
+确保中间件均已启动，然后执行：
 
 ```bash
 export APP_ENV=development
@@ -146,6 +164,40 @@ python -m uvicorn app.main:app --reload
 - 就绪检查：http://127.0.0.1:8000/health/ready
 
 应用启动时会调用 SQLAlchemy `Base.metadata.create_all()` 创建尚不存在的数据表。
+
+### GLM-5 API 独立测试
+
+根目录的 `ai-test.py` 可以绕过 Web 接口和数据库，直接验证腾讯云 GLM-5 Anthropic 兼容接口配置：
+
+```bash
+python ai-test.py
+```
+
+输入问题后回车即可连续进行多轮对话，回答会以流式方式输出；输入 `exit`、`quit` 或 `退出` 结束程序。脚本读取 `.env.development` 中的 `ANTHROPIC_AUTH_TOKEN`、`ANTHROPIC_BASE_URL` 和 `ANTHROPIC_MODEL` 配置。
+
+### Alembic 数据库迁移
+
+修改 `app/db/models.py` 后生成迁移文件：
+
+```bash
+alembic revision --autogenerate -m "描述本次模型变更"
+```
+
+生成后应先检查 `alembic/versions/` 中的 `upgrade()` 和 `downgrade()`，确认无误再升级数据库：
+
+```bash
+alembic upgrade head
+```
+
+常用检查和回退命令：
+
+```bash
+alembic current
+alembic history
+alembic downgrade -1
+```
+
+已有数据库首次接入 Alembic 时，在确认数据库结构与 ORM 模型一致后使用 `alembic stamp head` 标记基线，不要重复创建已有表。
 
 ## 分层架构
 

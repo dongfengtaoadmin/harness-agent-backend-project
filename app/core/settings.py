@@ -58,6 +58,9 @@ class Settings:
     deepseek_model: str  # 模型名，如 deepseek-chat
     deepseek_temperature: float  # 采样温度
     deepseek_max_tokens: int  # 单次补全最大 token 数
+    anthropic_auth_token: str  # Anthropic 兼容接口认证 Token
+    anthropic_base_url: str  # Anthropic 兼容接口地址
+    anthropic_model: str  # Anthropic 兼容接口模型名
     redis_host: str  # Redis 服务器地址
     redis_port: int  # Redis 服务器端口
     redis_db: int  # Redis 数据库编号
@@ -91,6 +94,9 @@ class Settings:
         deepseek_model = str(values.get("DEEPSEEK_MODEL", "deepseek-chat")).strip()
         deepseek_temperature = float(values.get("DEEPSEEK_TEMPERATURE", 0.7))
         deepseek_max_tokens = int(values.get("DEEPSEEK_MAX_TOKENS", 1024))
+        anthropic_auth_token = str(values.get("ANTHROPIC_AUTH_TOKEN", "")).strip()
+        anthropic_base_url = str(values.get("ANTHROPIC_BASE_URL", "")).strip()
+        anthropic_model = str(values.get("ANTHROPIC_MODEL", "glm-5")).strip()
 
         return Settings(
             app_env=app_env,
@@ -109,6 +115,9 @@ class Settings:
             deepseek_model=deepseek_model,
             deepseek_temperature=deepseek_temperature,
             deepseek_max_tokens=deepseek_max_tokens,
+            anthropic_auth_token=anthropic_auth_token,
+            anthropic_base_url=anthropic_base_url,
+            anthropic_model=anthropic_model,
             redis_host=str(values.get("REDIS_HOST", "127.0.0.1")).strip(),
             redis_port=int(values.get("REDIS_PORT", 6379)),
             redis_db=int(values.get("REDIS_DB", 0)),

@@ -1,24 +1,7 @@
-import re
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
 import jwt
-
-# 最小弱密码黑名单，用于拦截最常见的弱口令。
-_COMMON_WEAK_PASSWORDS = {
-    "123456",
-    "12345678",
-    "123456789",
-    "password",
-    "qwerty",
-    "111111",
-    "123123",
-    "admin",
-    "letmein",
-    "iloveyou",
-    "000000",
-}
-
 
 def _validate_bcrypt_length(password: str) -> bytes:
     # bcrypt 按字节数限制明文长度最大 72。
@@ -38,17 +21,6 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, hashed_password: str) -> bool:
     # 使用 bcrypt 校验明文与哈希是否匹配。
     return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
-
-
-def validate_password_strength(password: str, username: str | None = None) -> None:
-    # 规则保持简单、可预期，便于前端提示与一致校验。
-    normalized = password.strip()
-    if normalized.lower() in _COMMON_WEAK_PASSWORDS:
-        raise ValueError("密码过于常见，请使用更复杂的密码")
-    if username and username.lower() in normalized.lower():
-        raise ValueError("密码不能包含用户名")
-    if not re.search(r"[A-Za-z]", password) or not re.search(r"\d", password):
-        raise ValueError("密码必须同时包含字母和数字")
 
 
 def create_access_token(
