@@ -34,7 +34,7 @@ class StreamChatService:
         session_model: int,
         request_text: str,
         select_model: int = 0,
-        provider: str = "deepseek",
+        provider: str = "anthropic",
         agent_name: str = "interview_host",
         scene: str = "interview",
     ) -> StreamingResponse:

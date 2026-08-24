@@ -137,6 +137,42 @@ def validate_user_info(user_info_dict: dict) -> dict:
     return validated
 
 
+
+# {
+#     "name": "张三",
+#     "age": 28,
+#     "occupation": "Python 后端工程师",
+#     "interests": ["人工智能", "健身"],
+#     "response_preference": "内容简洁，并提供代码示例",
+# }
+
+
+# 你是一名专业的软件开发助手。
+
+# 请根据以下用户资料调整回答方式：
+
+# {{user_info}}
+
+# 回答要求：
+# 1. 准确回答用户的问题。
+# 2. 根据用户的技术背景调整内容深度。
+# 3. 尊重用户的表达偏好。
+
+# 你是一名专业的软件开发助手。
+
+# 请根据以下用户资料调整回答方式：
+
+# 姓名：张三
+# 年龄：28
+# 职业：Python 后端工程师
+# 兴趣：人工智能、健身
+# 回答偏好：内容简洁，并提供代码示例
+
+# 回答要求：
+# 1. 准确回答用户的问题。
+# 2. 根据用户的技术背景调整内容深度。
+# 3. 尊重用户的表达偏好。
+
 def build_personalized_prompt(
     db: Session,
     user_id: int,

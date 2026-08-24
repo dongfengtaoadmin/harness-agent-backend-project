@@ -54,12 +54,15 @@ python-multipart==0.0.9
 minio==7.2.18
 # 腾讯云 GLM-5 Anthropic 兼容接口客户端
 anthropic==0.121.0
+langchain-anthropic==0.3.22
 # langchain-openai 0.3.x 要求 langchain-core>=0.3.65；三者需互相兼容。
 langchain-core==0.3.84
 langchain-openai==0.3.23
 langchain-community==0.3.23
 # DuckDuckGo：langchain_community.tools.DuckDuckGoSearchRun 依赖
 duckduckgo-search==7.5.5
+# DuckDuckGo Search 新版客户端
+ddgs==9.14.4
 
 # Redis 客户端
 redis==5.0.0

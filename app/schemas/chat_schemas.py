@@ -54,5 +54,5 @@ class StreamChatRequest(BaseModel):
     request_text: str = Field(min_length=1, max_length=8000, description="用户输入")
     # 与数据库 chat_messages.select_model 字段保持一致。
     select_model: int = Field(default=0, ge=0, le=5, description="模型选择标记")
-    # 轻量扩展口：当前默认 deepseek，后续可扩 provider。
-    provider: str = Field(default="deepseek", description="模型提供方")
+    # 默认使用腾讯云 GLM-5 Anthropic 兼容接口；旧 deepseek 值由模型层兼容。
+    provider: str = Field(default="anthropic", description="模型提供方")
