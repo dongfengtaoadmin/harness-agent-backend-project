@@ -1,6 +1,7 @@
-﻿"""记忆层：负责历史记忆构建与检索增强信息。"""
+"""记忆层：负责历史记忆构建与检索增强信息。"""
 
-from langchain_community.chat_message_histories import ChatMessageHistory
+# [0.3.x] from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_core.chat_history import InMemoryChatMessageHistory as ChatMessageHistory
 from langchain_community.tools import DuckDuckGoSearchRun
 
 from app.db.models import ChatMessage

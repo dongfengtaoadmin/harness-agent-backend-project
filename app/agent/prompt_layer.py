@@ -1,9 +1,14 @@
 """提示词层：统一组装 Prompt、记忆与链路上下文。
 
 功能：
-1. 原有的build_stream_chain_context - 通用链路组装
-2. 新增的build_personalized_prompt - 带用户信息注入的个性化提示词
-3. 新增的inject_user_info_to_template - 提示词动态填充
+1. build_stream_chain_context  - 通用链路组装
+2. build_personalized_prompt   - 带用户信息注入的个性化提示词
+3. inject_user_info_to_template - 提示词动态填充
+
+升级说明（0.3.x → 1.x）：
+  旧写法：用 RunnableWithMessageHistory 包装链路，通过 configurable 传 session_id 管理历史。
+  新写法：历史消息直接从 DB 加载后注入 prompt，链路本身只是 prompt | llm，更简单直接。
+  安装：pip install langchain==1.3.4 langchain-core==1.4.2 langchain-openai==1.2.2 langchain-community==0.4.2 langchain-classic==1.0.7
 """
 
 from __future__ import annotations
@@ -12,12 +17,15 @@ import re
 from typing import Any, Optional
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.runnables import Runnable
+# [0.3.x] from langchain_core.runnables.history import RunnableWithMessageHistory
+# [0.3.x] from langchain_classic.schema.runnable.history import RunnableWithMessageHistory
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.agent.llm import get_chat_model
-from app.agent.memory import build_chat_history_from_rows, get_latest_knowledge
+from app.agent.memory import build_chat_history_from_rows
+# from app.agent.memory import get_latest_knowledge
 from app.db.models import ChatMessage
 from app.services.prompt_template_service import prompt_template_manager
 from app.services.user_profile_service import UserProfileService
@@ -32,7 +40,7 @@ def build_stream_chain_context(
     provider: str,
     request_text: str,
     system_prompt: Optional[str] = None,
-) -> tuple[RunnableWithMessageHistory, dict[str, Any]]:
+) -> tuple[Runnable, dict[str, Any]]:
     """组装流式链路上下文，返回可执行链与输入变量。"""
     # 1) 取最近 N 条历史消息（倒序拉取再反转，保证时间升序注入 prompt）。
     history_limit = 10
@@ -50,10 +58,6 @@ def build_stream_chain_context(
     )
     history_rows.reverse()
     history = build_chat_history_from_rows(history_rows)
-    history_store = {str(session_id): history}
-
-    def get_session_history(session_id_key: str):
-        return history_store.setdefault(session_id_key, history)
 
     # 2) system_prompt 为 None 时使用默认兜底提示词，确保链路始终可用。
     if system_prompt is None:
@@ -67,24 +71,37 @@ def build_stream_chain_context(
         ]
     )
 
+    # [1.x 新写法] 历史消息直接注入 inputs，链路本身只是 prompt | llm，无需 RunnableWithMessageHistory 包装。
     chain = prompt | get_chat_model(provider=provider)
-    chain_with_memory = RunnableWithMessageHistory(
-        chain,
-        get_session_history,
-        input_messages_key="user_input",
-        history_messages_key="history",
-    )
-    # 3) search_result 实时检索补充外部知识，local_kb 作为本地知识备用。
     stream_inputs = {
+        "history": history.messages,
         "user_input": request_text,
-        "local_kb": {
-            "Python": "基础语法、循环、函数、列表字典、文件操作、异常处理",
-            "Java": "面向对象、集合、IO、多线程、Spring基础",
-            "前端": "HTML/CSS、JS DOM、Vue、Ajax、响应式布局"
-        },
-        "search_result": get_latest_knowledge(request_text),
     }
-    return chain_with_memory, stream_inputs
+
+    # [0.3.x 旧写法] RunnableWithMessageHistory 包装链路，通过 configurable 传 session_id。
+    # history_store = {str(session_id): history}
+    # def get_session_history(session_id_key: str):
+    #     return history_store.setdefault(session_id_key, history)
+    # chain = RunnableWithMessageHistory(
+    #     prompt | get_chat_model(provider=provider),
+    #     get_session_history,
+    #     input_messages_key="user_input",
+    #     history_messages_key="history",
+    # )
+    # stream_inputs = {
+    #     "user_input": request_text,
+    #     "local_kb": {...},
+    #     "search_result": get_latest_knowledge(request_text),
+    # }
+
+    # stream_inputs["local_kb"] = {
+    #     "Python": "基础语法、循环、函数、列表字典、文件操作、异常处理",
+    #     "Java": "面向对象、集合、IO、多线程、Spring基础",
+    #     "前端": "HTML/CSS、JS DOM、Vue、Ajax、响应式布局"
+    # }
+    # stream_inputs["search_result"] = get_latest_knowledge(request_text)
+
+    return chain, stream_inputs
 
 
 def inject_user_info_to_template(
@@ -136,42 +153,6 @@ def validate_user_info(user_info_dict: dict) -> dict:
     
     return validated
 
-
-
-# {
-#     "name": "张三",
-#     "age": 28,
-#     "occupation": "Python 后端工程师",
-#     "interests": ["人工智能", "健身"],
-#     "response_preference": "内容简洁，并提供代码示例",
-# }
-
-
-# 你是一名专业的软件开发助手。
-
-# 请根据以下用户资料调整回答方式：
-
-# {{user_info}}
-
-# 回答要求：
-# 1. 准确回答用户的问题。
-# 2. 根据用户的技术背景调整内容深度。
-# 3. 尊重用户的表达偏好。
-
-# 你是一名专业的软件开发助手。
-
-# 请根据以下用户资料调整回答方式：
-
-# 姓名：张三
-# 年龄：28
-# 职业：Python 后端工程师
-# 兴趣：人工智能、健身
-# 回答偏好：内容简洁，并提供代码示例
-
-# 回答要求：
-# 1. 准确回答用户的问题。
-# 2. 根据用户的技术背景调整内容深度。
-# 3. 尊重用户的表达偏好。
 
 def build_personalized_prompt(
     db: Session,

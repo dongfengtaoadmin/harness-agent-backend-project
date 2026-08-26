@@ -171,6 +171,8 @@ class Resource(Base):
     __tablename__ = "resources"
     __table_args__ = (
         UniqueConstraint("file_hash", "user_id", name="uk_file_hash_user_id"),
+        # 业务分类查询索引：用于 list 用户的简历 / 学习资料等。
+        Index("idx_user_id_doc_category", "user_id", "doc_category"),
         {"comment": "资源治理总表（单表方案）"},
     )
 
@@ -201,6 +203,11 @@ class Resource(Base):
         String(64), nullable=False, comment="文件MD5")
     storage_path: Mapped[str] = mapped_column(
         String(512), nullable=False, comment="存储路径")
+    doc_category: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+        comment="文档业务分类：resume/study_material/general（仅文件类型有意义）",
+    )
     user_id: Mapped[int] = mapped_column(ForeignKey(
         "users.id"), nullable=False, comment="上传用户ID")
     expire_time: Mapped[datetime | None] = mapped_column(

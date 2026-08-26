@@ -7,7 +7,7 @@ anyio==4.12.1
 # Passlib 密码哈希依赖
 bcrypt==5.0.0
 # 命令行工具构建（Alembic 依赖）
-click==8.4.2
+click==8.3.1
 # 终端颜色输出
 colorama==0.4.6
 # Web 框架核心
@@ -26,8 +26,8 @@ passlib==1.7.4
 pydantic==2.12.5
 # Pydantic v2 核心运行时
 pydantic_core==2.41.5
-# MySQL 数据库驱动（rsa extra 支持 MySQL 8 的 caching_sha2_password 认证）
-PyMySQL[rsa]==1.1.1
+# MySQL 数据库驱动
+PyMySQL==1.1.1
 # 从 .env 文件加载环境变量
 python-dotenv==1.0.1
 # SQLAlchemy ORM 库
@@ -48,26 +48,42 @@ httpx==0.28.1
 pytest==8.4.2
 # pytest 异步测试支持
 pytest-asyncio==1.2.0
+# DuckDuckGo 搜索工具依赖
+ddgs>=6.3.5
 # FastAPI 文件上传依赖
 python-multipart==0.0.9
 # MinIO 对象存储 SDK
 minio==7.2.18
-# 腾讯云 GLM-5 Anthropic 兼容接口客户端
-anthropic==0.121.0
-langchain-anthropic==0.3.22
-# langchain-openai 0.3.x 要求 langchain-core>=0.3.65；三者需互相兼容。
-langchain-core==0.3.84
-langchain-openai==0.3.23
-langchain-community==0.3.23
+# PDF 文本提取与页面渲染（取代 PyPDF2）
+pypdfium2==4.30.0
+# 火山引擎 Python SDK
+volcengine==1.0.223
+# 读取图片
+pillow== 10.4.0
+# Word 文档文本提取
+python-docx==1.1.2
+# 阿里云 DashScope Embedding
+dashscope==1.23.3
+# Qdrant 向量数据库客户端
+qdrant-client==1.13.3
+# ============================================================
+
+# --- 旧版（0.3.x）已注释，保留供对比学习 ---
+# langchain==0.3.28
+# langchain-core==0.3.84
+# langchain-openai==0.3.23
+# langchain-community==0.3.23
+
+# --- 新版（1.x），兼容 LangGraph 1.x ---
+langchain==1.3.4
+langchain-core==1.4.2
+langchain-openai==1.2.2
+langchain-community==0.4.2
+langchain-text-splitters == 1.1.2
+# RunnableWithMessageHistory 兼容包（0.3.x 迁移过渡用）
+langchain-classic==1.0.7
 # DuckDuckGo：langchain_community.tools.DuckDuckGoSearchRun 依赖
 duckduckgo-search==7.5.5
-# DuckDuckGo Search 新版客户端
-ddgs==9.14.4
 
 # Redis 客户端
 redis==5.0.0
-
-# 本地免费 RAG Demo：PDF解析、本地Embedding与Qdrant向量检索
-pypdf==6.16.2
-qdrant-client==1.19.0
-sentence-transformers==6.0.0

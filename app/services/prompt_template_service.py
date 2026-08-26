@@ -7,9 +7,20 @@ import redis
 from sqlalchemy.orm import Session
 
 from app.core.settings import settings
-from app.db.agent_prompts import AGENT_CONFIG
 from app.db.models import PromptTemplate
 from app.utils.prompt_logger import log_redis_status
+
+
+AGENT_CONFIG = {
+    "flow_controller": {"scene": "workflow", "name": "流程总控Agent"},
+    "resume_parser": {"scene": "resume", "name": "资料&简历解析Agent"},
+    "quiz_generate_workflow": {"scene": "quiz", "name": "出题题库Agent"},
+    "interview_host": {"scene": "interview", "name": "面试主考官Agent"},
+    "interview_evaluator": {"scene": "evaluation", "name": "面试评测Agent"},
+    "difficulty_learner": {"scene": "study", "name": "难点学习Agent"},
+    "note_archiver": {"scene": "note", "name": "笔记归档Agent"},
+}
+
 
 class PromptTemplateManager:
     """提示词模板管理器：负责模板持久化、版本控制、Redis缓存、公共模板拼接。"""

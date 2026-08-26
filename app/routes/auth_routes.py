@@ -17,7 +17,7 @@ from app.security import create_access_token, create_refresh_token, decode_token
 from app.services import UserService # 服务层：处理用户相关的业务逻辑
 
 # 创建API路由实例（不在这里设置 /auth 前缀，统一在 main.py 中挂载）
-router = APIRouter(tags=["Auth"])
+router = APIRouter()
 
 # 数据库会话依赖，Annotated用于FastAPI的依赖注入
 DBSession = Annotated[Session, Depends(get_db)]

@@ -34,7 +34,7 @@ class StreamChatService:
         session_model: int,
         request_text: str,
         select_model: int = 0,
-        provider: str = "anthropic",
+        provider: str = "deepseek",
         agent_name: str = "interview_host",
         scene: str = "interview",
     ) -> StreamingResponse:
@@ -90,10 +90,13 @@ class StreamChatService:
             error_message = ""
             yield _sse_data({"type": "start", "message_id": row.id})
             try:
-                for chunk in chain_with_memory.stream(
-                    stream_inputs,
-                    config={"configurable": {"session_id": str(session_id)}},
-                ):
+                # [1.x 新写法] 直接 stream，历史已在 inputs 中，无需 config 传 session_id。
+                for chunk in chain_with_memory.stream(stream_inputs):
+                    # [0.3.x 旧写法] config 用于让 RunnableWithMessageHistory 识别会话。
+                    # for chunk in chain_with_memory.stream(
+                    #     stream_inputs,
+                    #     config={"configurable": {"session_id": str(session_id)}},
+                    # ):
                     delta = StreamChatService._extract_text_delta(chunk)
                     if not delta:
                         continue

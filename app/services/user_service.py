@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core import raise_error
 from app.db import User
 from app.schemas import UserCreateRequest, UserResponse, UserUpdateRequest
-from app.security import hash_password, verify_password
+from app.security import hash_password, validate_password_strength, verify_password
 
 
 class UserService:
@@ -27,8 +27,9 @@ class UserService:
         # 1) 校验用户名唯一性
         UserService._ensure_username_unique(db, payload.username)
 
-        # 2) 哈希密码
+        # 2) 校验密码强度并哈希
         try:
+            validate_password_strength(payload.password, payload.username)
             hashed_password = hash_password(payload.password)
         except ValueError as exc:
             raise_error(code=400, message=str(exc), detail={"field": "password"})
@@ -98,6 +99,7 @@ class UserService:
         if payload.password is not None:
             # 仅在显式传入新密码时，重新计算密码哈希值。
             try:
+                validate_password_strength(payload.password, new_username)
                 new_password = hash_password(payload.password)
             except ValueError as exc:
                 raise_error(code=400, message=str(exc), detail={"field": "password"})

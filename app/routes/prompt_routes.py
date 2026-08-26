@@ -17,7 +17,7 @@ from app.services.prompt_template_service import (
     prompt_template_manager,
 )
 
-router = APIRouter(prefix="/prompt", tags=["prompt_management"])
+router = APIRouter(tags=["prompt_management"])
 
 
 @router.get("/templates/{agent_name}/{scene}", response_model=StandardResponse, summary="获取模板版本列表")

@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.core import raise_error
 from app.core.settings import settings
 from app.db.models import Resource, User
+from app.rag import  infer_doc_category
 from app.services.minio_storage_service import MinioStorageService
 
 # 图片后缀与 MIME 白名单。
@@ -84,6 +85,7 @@ class UploadService:
         file: UploadFile,
         storage_scene: int = STORAGE_SCENE_LONG,
         upload_purpose: int = UPLOAD_PURPOSE_GENERAL,
+        doc_category: str | None = None,
     ) -> tuple[Resource, bool]:
         """统一上传入口，返回 (resource, is_deduplicated)。"""
         # 1) 统一参数与文件校验，先拦截非法请求。
@@ -107,6 +109,12 @@ class UploadService:
         )
         expire_time = UploadService._build_expire_time(
             storage_scene=storage_scene)
+        # 仅文件类型解析业务分类；图片/音频留 None。前端显式传值合法则采用，否则按文件名兜底。
+        resolved_category = UploadService._resolve_doc_category(
+            resource_type=resource_type,
+            file_name=file.filename,
+            explicit=doc_category,
+        )
 
         # 4) 代码层预查重：命中则复用资源，只更新场景/用途/过期时间。
         existing = UploadService._get_existing_resource(
@@ -135,6 +143,7 @@ class UploadService:
             file_name=file.filename,
             file_hash=md5_hash,
             storage_path=storage_path,
+            doc_category=resolved_category,
             user_id=user.id,
             expire_time=expire_time,
         )
@@ -198,6 +207,22 @@ class UploadService:
         """校验上传用途是否合法。"""
         if upload_purpose not in SUPPORTED_UPLOAD_PURPOSES:
             raise_error(code=400, message="不支持的上传用途")
+
+    @staticmethod
+    def _resolve_doc_category(
+        resource_type: int,
+        file_name: str | None,
+        explicit: str | None,
+    ) -> str | None:
+        """
+        解析业务分类：
+        - 仅文件类型（resource_type=0）参与分类；图片/音频返回 None。
+        - explicit 合法则采用；否则按文件名做中文关键字兜底推断。
+        - 非法值（如手抖传 "abc"）一律拒绝，回退到自动推断，避免脏数据入库。
+        """
+        if resource_type != RESOURCE_TYPE_FILE:
+            return None
+        return infer_doc_category(explicit=explicit)
 
     @staticmethod
     def _build_object_key(

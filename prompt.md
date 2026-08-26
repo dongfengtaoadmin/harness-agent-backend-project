@@ -253,5 +253,53 @@ FastAPI 中实现提示词版本管理：支持多智能体、公共模板、一
 2. 转换层 - 数据格式化（数组转文本、默认值处理）
 3. 填充层 - 占位符替换（{target_job} → 实际值）
 
+# 实现 RAG 文件向量化入库
+
+新建 app/rag/core.py，对外只暴露 `ingest_file`。
+
+流水线：解析 → 清洗 → 分类 → 分块 → 向量化 → 写 Qdrant。
+
+## 要求
+1. **解析**：PDF(PyPDF2) / DOCX(python-docx) / TXT，字典分派；不支持类型抛异常。
+2. **清洗**：去零宽字符、合并空白、压缩多换行、删独立页码行。
+3. **分类**：resume / study_material / general，按关键字计分，显式值优先。
+4. **分块**：滑动窗口 size=500、overlap=50，回退到句子终止符（。！？\n）切分，MD5 去重。
+5. **向量化**：DashScope `text-embedding-v4`，维度 1024，每批 10 条，按 text_index 对齐顺序。
+6. **写库**：Qdrant collection=`knowledge_chunks`，余弦距离，不存在自动建；point.id=uuid4，payload 含 text/user_id/doc_category/file_name/chunk_index。
+
+## 约束
+- 配置走 settings（dashscope_api_key、qdrant_host、qdrant_port）
+- 单文件聚合，不过度抽象
+
+
+
+背景：app/rag/core.py 用 PyPDF2 解析 PDF，扫描版抽不出文字。
+
+请升级 PDF 解析链路：
+
+1. 解析器替换：PyPDF2 → pypdfium2
+。requirements.txt 同步
+增删，并加 volcengine SDK。，pillow
+
+2. 扫描版判定：在 _parse_pdf 里先用 pypdfium2 抽文字，平均每页字符数
+   低于 20 视为扫描件，走 OCR 兜底；否则直接返回。
+
+3. OCR 单独成文件 app/rag/ocr.py，对外只暴露 ocr_pdf(path)。内部三步：
+   pypdfium2 按 150 DPI 渲染每页为 PNG → base64 上送 VisualService 的
+   OCRNormal → 取 data.line_texts 按行拼接为全文。
+
+4. 凭证：settings.py 新增 volc_access_key / secret_key / region。
+
+
+
+目标：把现有文本切片升级为递归智能切片，并增强 Word 文档结构识别，
+代码做最小改造，只修改 core.py
+
+具体要求：
+1. 引入 RecursiveCharacterTextSplitter。
+2. DOCX 提取时识别 Heading 1 / Heading 2 / Heading 3，并分别注入 # / ## / ### 标题标记。
+3. 新的切片分隔符按以下优先级：
+   \n### 、\n## 、\n# 、\n\n、\n、。、！、？、；、，、空格、字符兜底。
+4. 其余的业务逻辑都保留。
 
 

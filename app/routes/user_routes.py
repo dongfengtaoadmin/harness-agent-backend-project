@@ -15,6 +15,7 @@ from app.schemas import (
     UserUpdateRequest,
 )
 from app.services import UserService
+from app.services.minio_storage_service import MinioStorageService
 
 # 用户相关接口统一鉴权
 router = APIRouter(dependencies=[Depends(get_current_user)])
@@ -56,8 +57,12 @@ def get_user(
     user_id: Annotated[int, Path(gt=0, description="用户ID，必须大于0")],
     db: DBSession,
 ) -> UserResponse:
-    # Path(gt=0) 在框架层先做参数校验，非法值不会进入业务层。
-    return UserService.get_user(db, user_id)
+    user_resp = UserService.get_user(db, user_id)
+    if user_resp.avatar:
+        presigned = MinioStorageService.get_presigned_url(user_resp.avatar)
+        if presigned:
+            user_resp.avatar = presigned
+    return user_resp
 
 
 @router.put("/{user_id}", response_model=UserResponse, responses=common_error_responses)

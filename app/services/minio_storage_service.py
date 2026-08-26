@@ -1,5 +1,7 @@
 """MinIO 存储通用服务：统一客户端、路径解析、上传与删除。"""
 
+from datetime import timedelta
+
 from minio import Minio
 from minio.error import S3Error
 
@@ -61,6 +63,26 @@ class MinioStorageService:
             length=length,
             content_type=content_type,
         )
+
+    @staticmethod
+    def get_presigned_url(storage_path: str, expires_seconds: int = 3600) -> str | None:
+        """
+        通过 minio:// 路径生成预签名访问 URL。
+        非 minio 路径返回 None；生成失败同样返回 None。
+        """
+        if not MinioStorageService.is_minio_storage_path(storage_path):
+            return None
+        try:
+            bucket_name, object_name = MinioStorageService.parse_storage_path(storage_path)
+            client = MinioStorageService.get_client()
+            url = client.presigned_get_object(
+                bucket_name=bucket_name,
+                object_name=object_name,
+                expires=timedelta(seconds=expires_seconds),
+            )
+            return url
+        except Exception:
+            return None
 
     @staticmethod
     def delete_object_by_storage_path(

@@ -22,7 +22,11 @@ class UploadResponse(BaseModel):
     storage_scene: int
     # 上传用途：0普通资源，1用户头像。
     upload_purpose: int
+    # 文档业务分类：resume/study_material/general；非文件类型为 null。
+    doc_category: str | None = None
     # 资源过期时间；永久场景为 null。
     expire_time: datetime | None = None
     # 是否命中去重（true 表示复用已有资源）。
     is_deduplicated: bool
+    # 头像用途时的可访问 URL（预签名），非头像场景为 null。
+    avatar_url: str | None = None

@@ -58,9 +58,12 @@ class Settings:
     deepseek_model: str  # 模型名，如 deepseek-chat
     deepseek_temperature: float  # 采样温度
     deepseek_max_tokens: int  # 单次补全最大 token 数
-    anthropic_auth_token: str  # Anthropic 兼容接口认证 Token
-    anthropic_base_url: str  # Anthropic 兼容接口地址
-    anthropic_model: str  # Anthropic 兼容接口模型名
+    dashscope_api_key: str  # DashScope API Key（Embedding 用，含密钥必须走环境变量）
+    volc_access_key: str  # 火山引擎 Access Key（OCR 调用，扫描版 PDF 兜底）
+    volc_secret_key: str  # 火山引擎 Secret Key
+    volc_region: str  # 火山引擎服务地域（如 cn-north-1）
+    qdrant_host: str  # Qdrant 服务地址（不同环境会变）
+    qdrant_port: int  # Qdrant 服务端口（不同环境会变）
     redis_host: str  # Redis 服务器地址
     redis_port: int  # Redis 服务器端口
     redis_db: int  # Redis 数据库编号
@@ -94,9 +97,16 @@ class Settings:
         deepseek_model = str(values.get("DEEPSEEK_MODEL", "deepseek-chat")).strip()
         deepseek_temperature = float(values.get("DEEPSEEK_TEMPERATURE", 0.7))
         deepseek_max_tokens = int(values.get("DEEPSEEK_MAX_TOKENS", 1024))
-        anthropic_auth_token = str(values.get("ANTHROPIC_AUTH_TOKEN", "")).strip()
-        anthropic_base_url = str(values.get("ANTHROPIC_BASE_URL", "")).strip()
-        anthropic_model = str(values.get("ANTHROPIC_MODEL", "glm-5")).strip()
+
+        dashscope_api_key = str(values.get("DASHSCOPE_API_KEY", "")).strip()
+
+        # 火山 OCR 凭证：缺省时不强制报错，调到 OCR 时再失败（与 DashScope 策略保持一致）
+        volc_access_key = str(values.get("VOLC_ACCESS_KEY", "")).strip()
+        volc_secret_key = str(values.get("VOLC_SECRET_KEY", "")).strip()
+        volc_region = str(values.get("VOLC_REGION", "cn-north-1")).strip()
+
+        qdrant_host = str(values.get("QDRANT_HOST", "localhost")).strip()
+        qdrant_port = int(values.get("QDRANT_PORT", 6333))
 
         return Settings(
             app_env=app_env,
@@ -115,9 +125,12 @@ class Settings:
             deepseek_model=deepseek_model,
             deepseek_temperature=deepseek_temperature,
             deepseek_max_tokens=deepseek_max_tokens,
-            anthropic_auth_token=anthropic_auth_token,
-            anthropic_base_url=anthropic_base_url,
-            anthropic_model=anthropic_model,
+            dashscope_api_key=dashscope_api_key,
+            volc_access_key=volc_access_key,
+            volc_secret_key=volc_secret_key,
+            volc_region=volc_region,
+            qdrant_host=qdrant_host,
+            qdrant_port=qdrant_port,
             redis_host=str(values.get("REDIS_HOST", "127.0.0.1")).strip(),
             redis_port=int(values.get("REDIS_PORT", 6379)),
             redis_db=int(values.get("REDIS_DB", 0)),

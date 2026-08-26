@@ -1,357 +1,267 @@
-# Agent Backend Project
-
-基于 FastAPI、SQLAlchemy、MySQL、Redis、MinIO 和 LangChain 构建的智能面试后端服务，提供用户认证、会话管理、文件上传、提示词管理和流式对话等能力。
-
-本文档以 **macOS + zsh** 为运行环境。
-
-## 环境要求
-
-- macOS
-- Python 3.12（项目当前使用 3.12.13）
-- Docker Desktop（用于运行 MySQL、Redis、MinIO 和 Qdrant）
-- pyenv（推荐，用于管理 Python 版本）
-
-## macOS 快速启动
-
-### 1. 进入项目目录
-
-```bash
-cd /Users/apple/Desktop/code/Hermes/harness-hermes-multiagent-code/agent-backend-project
-```
-
-### 2. 选择 Python 版本
-
-项目根目录已有 `.python-version` 时，pyenv 会自动选择对应版本。也可以手动设置：
-
-```bash
-pyenv local 3.12.13
-python --version
-```
-
-预期输出：
-
-```text
-Python 3.12.13
-```
-
-### 3. 创建并激活虚拟环境
-
-首次运行时创建虚拟环境：
+# FastAPI 
+## 1) 创建并激活虚拟环境
 
 ```bash
 python -m venv .venv
 ```
 
-macOS 使用 `bin/activate` 激活：
+Windows (cmd):
 
 ```bash
-source .venv/bin/activate
+.venv\Scripts\activate
 ```
 
-激活后，终端提示符通常会显示 `(.venv)`。也可以用下面的命令确认：
+Windows (PowerShell):
 
 ```bash
-which python
+.venv\Scripts\Activate.ps1
 ```
 
-输出路径应以项目中的 `.venv/bin/python` 结尾。
-
-退出虚拟环境：
+## 2) 安装依赖
 
 ```bash
-deactivate
+pip install -r requirements.txt
 ```
 
-> `.venv/Scripts/activate` 是 Windows 路径，不适用于 macOS。
+## 3) 配置环境变量（敏感信息分层）
 
-### 4. 安装依赖
+项目支持按环境分层读取配置，避免将敏感数据写入代码：
+
+1. 复制模板并按环境创建文件。
+   - `.env.development`
+   - `.env.testing`
+   - `.env.production`
+2. 通过 `APP_ENV` 选择当前环境（默认 `development`）。
+
+示例（Windows cmd）：
 
 ```bash
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+set APP_ENV=development
 ```
 
-### 5. 配置环境变量
-
-项目按照运行环境读取配置文件：
-
-- 开发环境：`.env`
-- 生产环境：`.env.production`
-
-macOS 可先复制示例配置：
+示例（PowerShell）：
 
 ```bash
-cp env.example .env
+$env:APP_ENV="development"
 ```
 
-然后编辑 `.env`，至少检查以下配置：
+MinIO 对象存储配置（可写入 `.env.development`）：
 
-```dotenv
-APP_ENV=development
-
-MYSQL_URL=mysql+pymysql://用户名:密码@127.0.0.1:3306/数据库名
-
-JWT_SECRET=请替换为安全的随机字符串
-JWT_ALGORITHM=HS256
-JWT_ACCESS_EXPIRE_MINUTES=120
-JWT_REFRESH_EXPIRE_MINUTES=10080
-
+```bash
 MINIO_ENDPOINT=127.0.0.1:9000
 MINIO_ACCESS_KEY=minioadmin
 MINIO_SECRET_KEY=minioadmin
 MINIO_BUCKET=ai-resources
 MINIO_SECURE=false
-
-DEEPSEEK_API_KEY=请填写你的_API_Key
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-chat
-
-ANTHROPIC_AUTH_TOKEN=请填写你的_Auth_Token
-ANTHROPIC_BASE_URL=https://api.lkeap.cloud.tencent.com/coding/anthropic
-ANTHROPIC_MODEL=glm-5
-
-REDIS_HOST=127.0.0.1
-REDIS_PORT=6380
-REDIS_DB=0
-REDIS_PASSWORD=
 ```
 
-在当前终端选择开发环境：
+
+## 4) 启动服务（自动建表）
 
 ```bash
-export APP_ENV=development
-```
-
-如果没有设置 `APP_ENV`，项目默认使用 `development`。操作系统环境变量会覆盖 `.env.development` 中的同名配置。
-
-### 6. 启动中间件
-
-项目通过 `compose.yaml` 管理 MySQL、Redis、MinIO 和 Qdrant。启动后，它们会在 Docker Desktop 中统一显示在 `harness` 分组下：
-
-```bash
-docker compose up -d
-```
-
-查看运行状态：
-
-```bash
-docker compose ps
-```
-
-MinIO 控制台地址为 http://127.0.0.1:9001，默认用户名和密码均为 `minioadmin`。
-
-#### Qdrant 向量数据库
-
-Qdrant 已配置在 `compose.yaml` 中，会作为 `qdrant-1` 显示在 Docker Desktop 的 `harness` 分组内。首次启动时 Docker 会自动下载镜像：
-
-```bash
-docker compose up -d qdrant
-```
-
-检查运行状态：
-
-```bash
-docker compose ps qdrant
-curl http://127.0.0.1:6333
-```
-
-常用地址：
-
-- REST API：http://127.0.0.1:6333
-- Web 管理界面：http://127.0.0.1:6333/dashboard
-- gRPC：`127.0.0.1:6334`
-
-项目使用 Docker 命名卷 `qdrant_data` 将数据持久化到 `/qdrant/storage`，普通的停止或重建容器不会丢失数据：
-
-```bash
-# 停止 Qdrant
-docker compose stop qdrant
-
-# 重新启动 Qdrant
-docker compose start qdrant
-
-# 查看日志
-docker compose logs -f qdrant
-```
-
-执行 `docker compose down` 会删除容器，但保留 `qdrant_data` 数据卷。只有执行 `docker compose down -v` 才会连同 MySQL、Redis、MinIO 和 Qdrant 的本地数据卷一起删除，请谨慎使用。
-
-PDF 本地向量化与语义检索学习示例见 [`study/QDRANT_PDF_DEMO.md`](study/QDRANT_PDF_DEMO.md)。该示例使用本地 BGE 模型，不需要 API Key。
-
-### 7. 启动服务
-
-确保中间件均已启动，然后执行：
-
-```bash
-export APP_ENV=development
 uvicorn app.main:app --reload
 ```
 
-也可以通过虚拟环境中的 Python 启动：
+服务启动时会基于 SQLAlchemy 模型自动执行建表（`create_all`）。
 
-```bash
-python -m uvicorn app.main:app --reload
-```
+## 5) Alembic 管理表结构变更
 
-服务默认地址：
-
-- API：http://127.0.0.1:8000
-- Swagger 文档：http://127.0.0.1:8000/docs
-- ReDoc：http://127.0.0.1:8000/redoc
-- 存活检查：http://127.0.0.1:8000/health/live
-- 就绪检查：http://127.0.0.1:8000/health/ready
-
-应用启动时会调用 SQLAlchemy `Base.metadata.create_all()` 创建尚不存在的数据表。
-
-### GLM-5 API 独立测试
-
-根目录的 `ai-test.py` 可以绕过 Web 接口和数据库，直接验证腾讯云 GLM-5 Anthropic 兼容接口配置：
-
-```bash
-python ai-test.py
-```
-
-输入问题后回车即可连续进行多轮对话，回答会以流式方式输出；输入 `exit`、`quit` 或 `退出` 结束程序。脚本读取 `.env.development` 中的 `ANTHROPIC_AUTH_TOKEN`、`ANTHROPIC_BASE_URL` 和 `ANTHROPIC_MODEL` 配置。
-
-### Alembic 数据库迁移
-
-修改 `app/db/models.py` 后生成迁移文件：
-
-```bash
-alembic revision --autogenerate -m "描述本次模型变更"
-```
-
-生成后应先检查 `alembic/versions/` 中的 `upgrade()` 和 `downgrade()`，确认无误再升级数据库：
+初始化/同步数据库：
 
 ```bash
 alembic upgrade head
 ```
 
-常用检查和回退命令：
+模型修改后一键同步：
 
 ```bash
-alembic current
-alembic history
-alembic downgrade -1
+# 1) 改模型前：确认本地数据
+alembic revision --autogenerate -m "对本次变更的精确描述"
+alembic upgrade head
 ```
 
-已有数据库首次接入 Alembic 时，在确认数据库结构与 ORM 模型一致后使用 `alembic stamp head` 标记基线，不要重复创建已有表。
+## 分层结构
 
-## 分层架构
+- `app/routes/`: API 路由层
+- `app/schemas/`: 请求/响应校验层 (Pydantic v2)
+- `app/services/`: 业务逻辑层
+- `app/db/`: SQLAlchemy 数据层
+- `alembic/`: 迁移脚本
 
-项目采用职责分离的分层架构，请求的主要处理流程如下：
-
-```text
-客户端请求
-    ↓
-Routes 路由层
-    ↓
-Schemas 数据校验层
-    ↓
-Services 业务逻辑层
-    ↓
-DB 数据访问层
-    ↓
-MySQL / Redis / MinIO / LLM
-```
-
-### 各层职责
-
-| 层级 | 目录 | 职责 |
-| --- | --- | --- |
-| 应用入口层 | `app/main.py` | 创建 FastAPI 应用、注册中间件和异常处理器、挂载路由、执行启动生命周期 |
-| 路由层 | `app/routes/` | 定义 HTTP 接口，接收请求、注入依赖并调用业务服务；不应承载复杂业务逻辑 |
-| 数据校验层 | `app/schemas/` | 使用 Pydantic 定义请求参数、响应数据及领域数据结构 |
-| 业务服务层 | `app/services/` | 编排用户、会话、上传、提示词、聊天及资源清理等业务逻辑 |
-| Agent 层 | `app/agent/` | 封装大模型调用、提示词处理和会话记忆能力 |
-| 数据访问层 | `app/db/` | 管理 SQLAlchemy Engine、Session、ORM 基类和数据模型 |
-| 核心基础设施层 | `app/core/` | 统一管理配置、认证、日志、限流、响应模型和全局异常处理 |
-| 安全层 | `app/security.py` | 提供密码和令牌相关的安全能力 |
-| 通用工具层 | `app/utils/` | 存放可复用且不属于具体业务的辅助工具 |
-| 运维脚本 | `scripts/` | 存放数据初始化、资源清理等独立运行脚本 |
-| 测试层 | `tests/` | 存放自动化测试和冒烟测试 |
-
-### 项目目录
+### 项目文件结构总览
 
 ```text
 agent-backend-project/
-├── app/
-│   ├── agent/                 # LLM、提示词和记忆能力
-│   ├── core/                  # 配置、认证、日志、限流和异常处理
-│   ├── db/                    # 数据库连接、ORM 基类和模型
-│   ├── routes/                # FastAPI 路由
-│   ├── schemas/               # Pydantic 请求/响应模型
-│   ├── services/              # 业务逻辑服务
-│   ├── utils/                 # 通用工具
-│   ├── main.py                # 应用入口
-│   └── security.py            # 密码与令牌安全工具
-├── scripts/                   # 数据及资源维护脚本
-├── tests/                     # 自动化测试
-├── uploads/                   # 本地上传文件目录
-├── alembic.ini                # Alembic 配置
-├── env.example                # 环境变量示例
-├── requirements.txt           # Python 依赖
-└── README.md
+├── app/                              # 应用主目录
+│   ├── agent/                        # 智能体层：模型工厂 / 记忆 / 提示词组装
+│   │   ├── llm.py                    # ChatModel 工厂（DeepSeek 等 provider）
+│   │   ├── memory.py                 # 历史记忆构建 + 外部检索补充
+│   │   └── prompt_layer.py           # Prompt 拼装与个性化注入
+│   ├── core/                         # 核心基础设施
+│   │   ├── auth.py                   # 鉴权依赖（Bearer Token）
+│   │   ├── exception_handlers.py     # 全局异常处理
+│   │   ├── exceptions.py             # 业务异常定义
+│   │   ├── logging_config.py         # 日志配置
+│   │   ├── rate_limit.py             # 限流
+│   │   ├── response_models.py        # 统一响应模型
+│   │   └── settings.py               # 环境变量与配置加载
+│   ├── db/                           # 数据层
+│   │   ├── base.py                   # SQLAlchemy Base
+│   │   ├── database.py               # 引擎/Session 工厂
+│   │   └── models.py                 # ORM 模型（User/Session/ChatMessage 等）
+│   ├── rag/                          # RAG 文件入库与检索
+│   │   └── core.py                   # 解析→清洗→分块→向量化→写 Qdrant
+│   ├── routes/                       # API 路由层
+│   │   ├── auth_routes.py            # 登录/注册
+│   │   ├── interview_routes.py       # 面试相关
+│   │   ├── prompt_routes.py          # 提示词模板管理
+│   │   ├── session_routes.py         # 会话
+│   │   ├── upload_routes.py          # 文件上传
+│   │   └── user_routes.py            # 用户
+│   ├── schemas/                      # Pydantic v2 请求/响应模型
+│   │   ├── auth_schemas.py
+│   │   ├── chat_schemas.py
+│   │   ├── prompt_schemas.py
+│   │   ├── session_schemas.py
+│   │   ├── upload_schemas.py
+│   │   └── user_schemas.py
+│   ├── services/                     # 业务逻辑层
+│   │   ├── chat_service.py           # 普通聊天
+│   │   ├── stream_chat_service.py    # 流式聊天（SSE）
+│   │   ├── session_service.py        # 会话管理
+│   │   ├── prompt_template_service.py# 提示词模板（带 Redis 缓存）
+│   │   ├── rag_service.py            # RAG 摄入入口
+│   │   ├── minio_storage_service.py  # MinIO 客户端封装
+│   │   ├── upload_service_minio.py   # 上传业务（生产路径）
+│   │   ├── resource_cleanup_service.py# 过期资源清理
+│   │   ├── user_service.py           # 用户业务
+│   │   └── user_profile_service.py   # 用户画像 CRUD
+│   ├── utils/
+│   │   └── prompt_logger.py          # 提示词专用日志
+│   ├── main.py                       # FastAPI 应用入口
+│   └── security.py                   # 密码哈希 / Token
+├── scripts/                          # 运维/一次性脚本
+│   ├── insert_sample_records.py      # 插入示例数据
+│   └── run_expired_resource_cleanup.py# 过期资源定时清理
+├── tests/
+│   └── test_smoke.py                 # 冒烟测试
+├── uploads/                          # 本地上传目录（兼容旧逻辑）
+├── alembic.ini                       # Alembic 配置
+├── env.example                       # 环境变量模板
+├── requirements.txt                  # Python 依赖
+├── prompt.md                         # 设计/提示词笔记
+└── README.md                         # 项目说明
 ```
 
-### 分层开发约定
+> 说明：`app/services/upload_service.py`（教学版旧逻辑）不在结构图中列出，实际运行以 `upload_service_minio.py` 为准。
 
-新增业务功能时，建议按以下顺序组织代码：
-
-1. 在 `schemas/` 定义请求和响应模型。
-2. 在 `services/` 编写业务规则及资源编排逻辑。
-3. 在 `routes/` 定义接口并调用 Service。
-4. 需要持久化时，在 `db/models.py` 定义或调整 ORM 模型。
-5. 在 `tests/` 添加相应测试。
-
-依赖方向应尽量保持为：`routes → services → db/agent`，避免数据库层反向依赖路由层。
-
-## 数据库表结构管理
-
-当前开发模式会在服务启动时通过 `create_all()` 自动创建新表，但它不会自动修改已经存在的表结构。
-
-项目已有 `alembic.ini`，但使用 Alembic 前还需要确保项目中存在完整的迁移环境（例如 `alembic/env.py` 和 `alembic/versions/`）。迁移环境就绪后，可执行：
-
-```bash
-alembic revision --autogenerate -m "描述本次变更"
-alembic upgrade head
-```
-
-生产环境推荐使用 Alembic 管理版本，不依赖 `create_all()` 完成表结构升级。
-
-## 文件资源上传
-
-上传接口：
+### 项目文件结构总览
 
 ```text
-POST /upload/file
+agent-backend-project/
+├── app/                              # 应用主目录
+│   ├── agent/                        # 智能体层：模型工厂 / 记忆 / 提示词组装
+│   │   ├── llm.py                    # ChatModel 工厂（DeepSeek 等 provider）
+│   │   ├── memory.py                 # 历史记忆构建 + 外部检索补充
+│   │   └── prompt_layer.py           # Prompt 拼装与个性化注入
+│   ├── core/                         # 核心基础设施
+│   │   ├── auth.py                   # 鉴权依赖（Bearer Token）
+│   │   ├── exception_handlers.py     # 全局异常处理
+│   │   ├── exceptions.py             # 业务异常定义
+│   │   ├── logging_config.py         # 日志配置
+│   │   ├── rate_limit.py             # 限流
+│   │   ├── response_models.py        # 统一响应模型
+│   │   └── settings.py               # 环境变量与配置加载
+│   ├── db/                           # 数据层
+│   │   ├── base.py                   # SQLAlchemy Base
+│   │   ├── database.py               # 引擎/Session 工厂
+│   │   └── models.py                 # ORM 模型（User/Session/ChatMessage 等）
+│   ├── rag/                          # RAG 文件入库与检索
+│   │   └── core.py                   # 解析→清洗→分块→向量化→写 Qdrant
+│   ├── routes/                       # API 路由层
+│   │   ├── auth_routes.py            # 登录/注册
+│   │   ├── interview_routes.py       # 面试相关
+│   │   ├── prompt_routes.py          # 提示词模板管理
+│   │   ├── session_routes.py         # 会话
+│   │   ├── upload_routes.py          # 文件上传
+│   │   └── user_routes.py            # 用户
+│   ├── schemas/                      # Pydantic v2 请求/响应模型
+│   │   ├── auth_schemas.py
+│   │   ├── chat_schemas.py
+│   │   ├── prompt_schemas.py
+│   │   ├── session_schemas.py
+│   │   ├── upload_schemas.py
+│   │   └── user_schemas.py
+│   ├── services/                     # 业务逻辑层
+│   │   ├── chat_service.py           # 普通聊天
+│   │   ├── stream_chat_service.py    # 流式聊天（SSE）
+│   │   ├── session_service.py        # 会话管理
+│   │   ├── prompt_template_service.py# 提示词模板（带 Redis 缓存）
+│   │   ├── rag_service.py            # RAG 摄入入口
+│   │   ├── minio_storage_service.py  # MinIO 客户端封装
+│   │   ├── upload_service_minio.py   # 上传业务（生产路径）
+│   │   ├── resource_cleanup_service.py# 过期资源清理
+│   │   ├── user_service.py           # 用户业务
+│   │   └── user_profile_service.py   # 用户画像 CRUD
+│   ├── utils/
+│   │   └── prompt_logger.py          # 提示词专用日志
+│   ├── main.py                       # FastAPI 应用入口
+│   └── security.py                   # 密码哈希 / Token
+├── scripts/                          # 运维/一次性脚本
+│   ├── insert_sample_records.py      # 插入示例数据
+│   └── run_expired_resource_cleanup.py# 过期资源定时清理
+├── tests/
+│   └── test_smoke.py                 # 冒烟测试
+├── uploads/                          # 本地上传目录（兼容旧逻辑）
+├── alembic.ini                       # Alembic 配置
+├── env.example                       # 环境变量模板
+├── requirements.txt                  # Python 依赖
+├── prompt.md                         # 设计/提示词笔记
+└── README.md                         # 项目说明
 ```
 
-接口需要 Bearer Token，请求类型为 `multipart/form-data`。
+> 说明：`app/services/upload_service.py`（教学版旧逻辑）不在结构图中列出，实际运行以 `upload_service_minio.py` 为准。
 
-主要字段：
+## 文件资源上传管理
 
-- `file`：待上传文件，必填。
-- `storage_scene`：存储场景，默认 `0`。
-  - `0`：长过期，30 天。
-  - `1`：短过期，2 小时。
-  - `2`：仅提取内容，不保存原文件。
-  - `3`：永久存储。
-- `upload_purpose`：上传用途，默认 `0`。
-  - `0`：普通资源。
-  - `1`：用户头像；图片类型会更新用户头像。
+项目已支持统一资源管理（文件/图片/音频）：
 
-当前上传实现会进行资源类型识别、用户级 MD5 去重，将文件保存到 MinIO，并把元数据写入数据库。实际运行逻辑位于 `app/services/upload_service_minio.py`。
+- 接口：`POST /upload/file`（需 Bearer Token）
+- 上传字段（`multipart/form-data`）：
+  - `file`: 上传文件（必填）
+  - `storage_scene`: 存储场景（可选，默认 `0`）
+    - `0` 长过期（30天）
+    - `1` 短过期（2小时）
+    - `2` 仅提取内容，不落盘原文件
+    - `3` 永久存储
+  - `upload_purpose`: 上传用途（可选，默认 `0`）
+    - `0` 普通资源（不更新头像）
+    - `1` 用户头像（图片类型时更新 `users.avatar`）
 
-## 资源清理脚本
+上传行为：
 
-只执行一次，适合手动验证：
+- 按扩展名识别资源类型：文件（0）/图片（1）/音频（2）
+- 使用 `MD5 + user_id` 做用户级去重
+- 原文件上传到 MinIO（`storage_scene=2` 除外）
+- 资源元数据写入 `resources` 表（`storage_path` 为 `minio://bucket/object_key`）
+- 仅当 `upload_purpose=1` 且图片类型时，更新 `users.avatar`
+- 教学版旧逻辑保留在 `app/services/upload_service.py`（不参与运行）
+- 实际运行逻辑在 `app/services/upload_service_minio.py`
+
+详细实现说明见：[docs/resource_upload_design.md](docs/resource_upload_design.md)
+数据完整性验收清单见：[docs/resource_data_integrity_acceptance.md](docs/resource_data_integrity_acceptance.md)
+
+## 过期资源定时清理（每天 03:00）
+
+已提供定时清理脚本：`scripts/run_expired_resource_cleanup.py`
+
+- 运行一次（用于手动验证）：
 
 ```bash
 python scripts/run_expired_resource_cleanup.py --once
 ```
 
-持续运行，并在每天凌晨 03:00 清理：
+- 持续运行（每天凌晨 3 点执行）：
 
 ```bash
 python scripts/run_expired_resource_cleanup.py
@@ -359,51 +269,6 @@ python scripts/run_expired_resource_cleanup.py
 
 可选参数：
 
-- `--hour`：执行小时，默认 `3`。
-- `--minute`：执行分钟，默认 `0`。
-- `--timezone`：时区，默认 `Asia/Shanghai`。
-
-## 测试
-
-确保已激活虚拟环境并准备好测试环境配置，然后执行：
-
-```bash
-export APP_ENV=development
-pytest
-```
-
-## 常见问题
-
-### `pyenv: python: command not found`
-
-为当前项目选择已安装的 Python 版本：
-
-```bash
-pyenv local 3.12.13
-python --version
-```
-
-### 激活虚拟环境后没有显示 `(.venv)`
-
-先确认环境是否实际激活：
-
-```bash
-echo $VIRTUAL_ENV
-which python
-```
-
-如果设置过禁用提示符变量，可执行：
-
-```bash
-unset VIRTUAL_ENV_DISABLE_PROMPT
-deactivate 2>/dev/null || true
-source .venv/bin/activate
-```
-
-### 停止服务
-
-在运行 Uvicorn 的终端按：
-
-```text
-Control + C
-```
+- `--hour`：执行小时（默认 `3`）
+- `--minute`：执行分钟（默认 `0`）
+- `--timezone`：时区（默认 `Asia/Shanghai`）
