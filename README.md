@@ -8,7 +8,7 @@
 
 - macOS
 - Python 3.12（项目当前使用 3.12.13）
-- Docker Desktop（用于运行 MySQL、Redis 和 MinIO）
+- Docker Desktop（用于运行 MySQL、Redis、MinIO 和 Qdrant）
 - pyenv（推荐，用于管理 Python 版本）
 
 ## macOS 快速启动
@@ -126,7 +126,7 @@ export APP_ENV=development
 
 ### 6. 启动中间件
 
-项目通过 `compose.yaml` 管理 MySQL、Redis 和 MinIO。启动后，它们会在 Docker Desktop 中统一显示在 `harness` 分组下：
+项目通过 `compose.yaml` 管理 MySQL、Redis、MinIO 和 Qdrant。启动后，它们会在 Docker Desktop 中统一显示在 `harness` 分组下：
 
 ```bash
 docker compose up -d
@@ -139,6 +139,44 @@ docker compose ps
 ```
 
 MinIO 控制台地址为 http://127.0.0.1:9001，默认用户名和密码均为 `minioadmin`。
+
+#### Qdrant 向量数据库
+
+Qdrant 已配置在 `compose.yaml` 中，会作为 `qdrant-1` 显示在 Docker Desktop 的 `harness` 分组内。首次启动时 Docker 会自动下载镜像：
+
+```bash
+docker compose up -d qdrant
+```
+
+检查运行状态：
+
+```bash
+docker compose ps qdrant
+curl http://127.0.0.1:6333
+```
+
+常用地址：
+
+- REST API：http://127.0.0.1:6333
+- Web 管理界面：http://127.0.0.1:6333/dashboard
+- gRPC：`127.0.0.1:6334`
+
+项目使用 Docker 命名卷 `qdrant_data` 将数据持久化到 `/qdrant/storage`，普通的停止或重建容器不会丢失数据：
+
+```bash
+# 停止 Qdrant
+docker compose stop qdrant
+
+# 重新启动 Qdrant
+docker compose start qdrant
+
+# 查看日志
+docker compose logs -f qdrant
+```
+
+执行 `docker compose down` 会删除容器，但保留 `qdrant_data` 数据卷。只有执行 `docker compose down -v` 才会连同 MySQL、Redis、MinIO 和 Qdrant 的本地数据卷一起删除，请谨慎使用。
+
+PDF 本地向量化与语义检索学习示例见 [`study/QDRANT_PDF_DEMO.md`](study/QDRANT_PDF_DEMO.md)。该示例使用本地 BGE 模型，不需要 API Key。
 
 ### 7. 启动服务
 

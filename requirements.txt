@@ -7,7 +7,7 @@ anyio==4.12.1
 # Passlib 密码哈希依赖
 bcrypt==5.0.0
 # 命令行工具构建（Alembic 依赖）
-click==8.3.1
+click==8.4.2
 # 终端颜色输出
 colorama==0.4.6
 # Web 框架核心
@@ -66,3 +66,8 @@ ddgs==9.14.4
 
 # Redis 客户端
 redis==5.0.0
+
+# 本地免费 RAG Demo：PDF解析、本地Embedding与Qdrant向量检索
+pypdf==6.16.2
+qdrant-client==1.19.0
+sentence-transformers==6.0.0

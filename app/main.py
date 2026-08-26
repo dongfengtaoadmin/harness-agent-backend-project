@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 from app.core import register_exception_handlers
 from app.core.logging_config import main_logger  # 导入日志配置
 from app.db.base import Base
-from app.db.database import engine, get_db
+from app.db.database import SessionLocal, engine, get_db
+from app.db.init_prompts import initialize_prompt_templates
+from app.services.prompt_template_service import prompt_template_manager
 # 导入 Base 和 engine
 from app.routes import auth_router, interview_router, session_router, user_router, upload_router, prompt_router
 
@@ -20,6 +22,11 @@ async def lifespan(_: FastAPI):
     # 为简化流程，使用 create_all() 自动创建表
     # 注意：生产环境推荐使用 Alembic 进行数据库版本管理
     Base.metadata.create_all(engine)
+    # 幂等补齐内置提示词：首次写入，后续启动自动跳过已有版本。
+    with SessionLocal() as db:
+        created_count = initialize_prompt_templates(db)
+        prompt_template_manager.load_all_effective_to_redis(db)
+    main_logger.info(f"提示词初始化检查完成，本次新增 {created_count} 条")
     main_logger.info("应用启动完成，数据库表已确认就绪，请通过此地址访问: http://127.0.0.1:8000")
     yield
 
