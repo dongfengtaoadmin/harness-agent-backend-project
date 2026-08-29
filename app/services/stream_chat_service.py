@@ -34,7 +34,7 @@ class StreamChatService:
         session_model: int,
         request_text: str,
         select_model: int = 0,
-        provider: str = "deepseek",
+        provider: str = "glm5",
         agent_name: str = "interview_host",
         scene: str = "interview",
     ) -> StreamingResponse:
@@ -127,7 +127,10 @@ class StreamChatService:
 
     @staticmethod
     def _extract_text_delta(chunk: Any) -> str:
-        """从 LangChain 链式调用返回的增量块中提取文本。"""
+        """从 LangChain 增量块中提取最终回答文本，忽略 Anthropic thinking 块。"""
         if isinstance(chunk, AIMessageChunk):
-            return chunk.content or ""
+            # Anthropic 流式响应的 content 可能是 str，也可能是
+            # [{"type": "thinking", ...}] / [{"type": "text", "text": ...}]。
+            # LangChain 的 text 属性会只合并文本块，并始终可转为字符串。
+            return str(chunk.text)
         return ""

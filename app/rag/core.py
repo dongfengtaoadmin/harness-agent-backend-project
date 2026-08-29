@@ -16,17 +16,16 @@ import hashlib
 import re
 import uuid
 from dataclasses import dataclass
-from http import HTTPStatus
+from functools import lru_cache
 from pathlib import Path
 
 import pypdfium2 as pdfium
-import dashscope
 import docx
 from docx.oxml.ns import qn
-from dashscope import TextEmbedding
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, FieldCondition, Filter, MatchValue, PointStruct, VectorParams
+from sentence_transformers import SentenceTransformer
 
 from app.core.settings import settings
 from app.rag.ocr import ocr_pdf
@@ -34,11 +33,10 @@ from app.rag.ocr import ocr_pdf
 # 业务固定常量
 # ============================================================
 
-# DashScope Embedding 模型与维度：业务统一选型，跨环境保持一致。
-EMBEDDING_MODEL = "text-embedding-v4"
-EMBEDDING_DIM = 1024
-# DashScope 单次最多 10 条输入。
-EMBED_BATCH_SIZE = 10
+# 免费的本地中文 Embedding 模型，无需 API Key；首次运行会下载到本机缓存。
+EMBEDDING_MODEL = "BAAI/bge-small-zh-v1.5"
+EMBEDDING_DIM = 512
+EMBED_BATCH_SIZE = 32
 
 # Qdrant collection 名：文件知识库现在用，对话记忆库后续接 Memory 时用。
 COLLECTION_KNOWLEDGE = "knowledge_chunks"
@@ -275,38 +273,28 @@ def _split_chunks(text: str) -> list[str]:
 
 
 # ============================================================
-# 4) DashScope 向量化（批量 + 状态校验）
+# 4) 本地向量化（免费 + 模型缓存）
 # ============================================================
 
+@lru_cache(maxsize=1)
+def _get_embedding_model() -> SentenceTransformer:
+    """加载并缓存本地模型，避免每次摄入文档都重新初始化。"""
+    print(f"[RAG][向量化] 加载本地模型：{EMBEDDING_MODEL}")
+    return SentenceTransformer(EMBEDDING_MODEL)
+
+
 def _generate_embeddings(texts: list[str]) -> list[list[float]]:
-    """批量调用 DashScope；按 text_index 还原顺序对齐输入。"""
+    """在本地批量生成归一化向量，不调用付费 API。"""
     if not texts:
         return []
-    if not settings.dashscope_api_key:
-        raise RuntimeError("DASHSCOPE_API_KEY 未配置，无法生成向量")
 
-    dashscope.api_key = settings.dashscope_api_key
-    all_vectors: list[list[float]] = []
-
-    # DashScope text-embedding-v4 单次最多 10 条，分批调用。
-    for i in range(0, len(texts), EMBED_BATCH_SIZE):
-        batch = texts[i : i + EMBED_BATCH_SIZE]
-        resp = TextEmbedding.call(
-            model=EMBEDDING_MODEL,
-            input=batch,
-            dimension=EMBEDDING_DIM,
-            text_type="document",
-        )
-        if getattr(resp, "status_code", None) != HTTPStatus.OK:
-            raise RuntimeError(
-                f"DashScope Embedding 调用失败：code={getattr(resp, 'code', None)}, "
-                f"message={getattr(resp, 'message', None)}"
-            )
-        # 按 text_index 排序确保向量与原始文本一一对应。
-        items = sorted(resp.output["embeddings"], key=lambda x: x["text_index"])
-        all_vectors.extend(it["embedding"] for it in items)
-
-    return all_vectors
+    embeddings = _get_embedding_model().encode(
+        texts,
+        batch_size=EMBED_BATCH_SIZE,
+        normalize_embeddings=True,
+        show_progress_bar=False,
+    )
+    return embeddings.tolist()
 
 
 # ============================================================

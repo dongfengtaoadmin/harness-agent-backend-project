@@ -58,6 +58,9 @@ class Settings:
     deepseek_model: str  # 模型名，如 deepseek-chat
     deepseek_temperature: float  # 采样温度
     deepseek_max_tokens: int  # 单次补全最大 token 数
+    anthropic_auth_token: str  # Anthropic 兼容接口密钥（GLM-5）
+    anthropic_base_url: str  # Anthropic 兼容接口 Base URL
+    anthropic_model: str  # Anthropic 兼容接口模型名
     dashscope_api_key: str  # DashScope API Key（Embedding 用，含密钥必须走环境变量）
     volc_access_key: str  # 火山引擎 Access Key（OCR 调用，扫描版 PDF 兜底）
     volc_secret_key: str  # 火山引擎 Secret Key
@@ -98,6 +101,10 @@ class Settings:
         deepseek_temperature = float(values.get("DEEPSEEK_TEMPERATURE", 0.7))
         deepseek_max_tokens = int(values.get("DEEPSEEK_MAX_TOKENS", 1024))
 
+        anthropic_auth_token = str(values.get("ANTHROPIC_AUTH_TOKEN", "")).strip()
+        anthropic_base_url = str(values.get("ANTHROPIC_BASE_URL", "")).strip()
+        anthropic_model = str(values.get("ANTHROPIC_MODEL", "glm-5")).strip()
+
         dashscope_api_key = str(values.get("DASHSCOPE_API_KEY", "")).strip()
 
         # 火山 OCR 凭证：缺省时不强制报错，调到 OCR 时再失败（与 DashScope 策略保持一致）
@@ -125,6 +132,9 @@ class Settings:
             deepseek_model=deepseek_model,
             deepseek_temperature=deepseek_temperature,
             deepseek_max_tokens=deepseek_max_tokens,
+            anthropic_auth_token=anthropic_auth_token,
+            anthropic_base_url=anthropic_base_url,
+            anthropic_model=anthropic_model,
             dashscope_api_key=dashscope_api_key,
             volc_access_key=volc_access_key,
             volc_secret_key=volc_secret_key,
